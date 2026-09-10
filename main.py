@@ -1,6 +1,6 @@
 from datetime import date
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, simpledialog
 
 class Task:
     def __init__(self, name, start_date, end_date, status):
@@ -128,6 +128,23 @@ def select_task(event):
             print("Selected Task:", task.name)
             print("Status:", task.status)
 
+def refresh_table():
+    for item in table.get_children():
+        table.delete(item)
+
+    for task in tasks:
+        table.insert(
+            "",
+            "end",
+            values=(
+                task.name,
+                task.start_date,
+                task.end_date,
+                task.duration,
+                task.status
+            )
+        )
+
 def update_selected_task():
     selected_item = table.selection()
 
@@ -135,7 +152,44 @@ def update_selected_task():
         item = table.item(selected_item[0])
         task_name = item["values"][0]
 
-        print("Update selected task:", task_name)
+        status_window = tk.Toplevel(window)
+        status_window.title("Update Status")
+        status_window.geometry("300x150")
+
+        status_label = tk.Label(
+            status_window,
+            text="Select new status:"
+        )
+        status_label.pack(pady=10)
+
+        status_dropdown = ttk.Combobox(
+            status_window,
+            values=["Done", "In Progress", "Not Started"],
+            state="readonly"
+        )
+        status_dropdown.pack()
+
+        status_dropdown.set(item["values"][4])
+
+        def confirm_status_update():
+            new_status = status_dropdown.get()
+
+            update_task(
+                tasks,
+                task_name,
+                new_status
+            )
+
+            refresh_table()
+            status_window.destroy()
+
+        update_button = tk.Button(
+            status_window,
+            text="Update",
+            command=confirm_status_update
+        )
+
+        update_button.pack(pady=15)
 
 window = tk.Tk()
 
