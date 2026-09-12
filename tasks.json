@@ -1,0 +1,26 @@
+[
+    {
+        "name": "Requirement Gathering",
+        "start_date": "2026-09-10",
+        "end_date": "2026-09-15",
+        "status": "Done"
+    },
+    {
+        "name": "Development",
+        "start_date": "2026-09-16",
+        "end_date": "2026-09-30",
+        "status": "Done"
+    },
+    {
+        "name": "Test",
+        "start_date": "2026-10-01",
+        "end_date": "2026-10-10",
+        "status": "In Progress"
+    },
+    {
+        "name": "asd",
+        "start_date": "2026-10-10",
+        "end_date": "2026-10-11",
+        "status": "Not Started"
+    }
+]
