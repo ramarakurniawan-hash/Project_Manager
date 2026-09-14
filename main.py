@@ -1,6 +1,6 @@
 from datetime import date
 import tkinter as tk
-from tkinter import ttk, simpledialog
+from tkinter import ttk, messagebox
 import json
 
 class Task:
@@ -8,49 +8,11 @@ class Task:
         self.name = name
         self.start_date = start_date
         self.end_date = end_date
-        self.duration = (end_date - start_date).days + 1
         self.status = status
 
-def print_task(task):
-    print("Task:", task.name)
-    print("Start:", task.start_date)
-    print("End:", task.end_date)
-    print("Duration:", task.duration, "days")
-    print("Status:", task.status)
-    print()
-
-def add_task(tasks):
-    new_task_name = input("Enter a task name: ")
-    new_task_start = input("Enter start date (YYYY-MM-DD): ")
-    new_task_end = input("Enter end date (YYYY-MM-DD): ")
-
-    new_task_start = date.fromisoformat(new_task_start)
-    new_task_end = date.fromisoformat(new_task_end)
-
-    while True:
-        new_task_status = input("Enter the status (Done/In Progress/Not Started): ")
-        if new_task_status in ["Done", "In Progress", "Not Started"]:
-            break
-        else:
-            print("Invalid status. Please try again.")
-
-    if new_task_status == "Done":
-        print("Task is completed!")
-    elif new_task_status == "In Progress":
-        print("Task is currently being worked on.")
-    else:
-        print("Task has not started yet.")
-
-    new_task = Task(
-        new_task_name,
-        new_task_start,
-        new_task_end,
-        new_task_status
-    )
-
-    tasks.append(new_task)
-
-    return new_task
+    @property
+    def duration(self):
+        return (self.end_date - self.start_date).days + 1
 
 def find_task(tasks, task_name):
     for task in tasks:
@@ -59,16 +21,32 @@ def find_task(tasks, task_name):
 
     return None
 
-def update_task(tasks, task_name, new_status):
+def validate_dates(start_date, end_date):
+    if start_date > end_date:
+        return False
+    
+    return True
+
+def update_task(tasks, task_name, new_name, new_start, new_end, new_status):
     task = find_task(tasks, task_name)
 
     if task is None:
         print("Task not found.")
-        return
+        return False
+
+    if not validate_dates(new_start, new_end):
+        messagebox.showerror(
+            "Invalid Date Range",
+            "End date cannot be earlier than start date."
+        )
+        return False
         
+    task.name = new_name
+    task.start_date = new_start
+    task.end_date = new_end
     task.status = new_status
 
-    print("Task updated!")
+    return True
 
 def delete_task(tasks, task_name):
     task = find_task(tasks, task_name)
@@ -78,8 +56,6 @@ def delete_task(tasks, task_name):
         return
 
     tasks.remove(task)
-    
-    print("Task deleted!")
 
 def save_tasks(tasks):
     task_data = []
@@ -122,10 +98,6 @@ def select_task(event):
         task_name = item["values"][0]
 
         task = find_task(tasks, task_name)
-        
-        if task:
-            print("Selected Task:", task.name)
-            print("Status:", task.status)
 
 def refresh_table():
     for item in table.get_children():
@@ -151,43 +123,110 @@ def update_selected_task():
         item = table.item(selected_item[0])
         task_name = item["values"][0]
 
-        status_window = tk.Toplevel(window)
-        status_window.title("Update Status")
-        status_window.geometry("300x150")
+        edit_window = tk.Toplevel(window)
+        edit_window.title("Update Task")
+
+        edit_window.transient(window)
+        edit_window.grab_set()
+
+        name_label = tk.Label(
+            edit_window,
+            text="Task Name:"
+        )
+        name_label.pack(pady=5)
+
+        name_entry = tk.Entry(
+            edit_window
+        )
+        name_entry.pack(pady=5)
+        name_entry.insert(
+            0,
+            item["values"][0]
+        )
+
+        start_label = tk.Label(
+            edit_window,
+            text="Start Date:"
+        )
+        start_label.pack(pady=5)
+
+        start_entry = tk.Entry(
+            edit_window
+        )
+        start_entry.pack(pady=5)
+
+        start_entry.insert(
+            0,
+            item["values"][1]
+        )
+
+        end_label = tk.Label(
+            edit_window,
+            text="End Date:"
+        )
+        end_label.pack(pady=5)
+
+        end_entry = tk.Entry(
+            edit_window
+        )
+        end_entry.pack(pady=5)
+
+        end_entry.insert(
+            0,
+            item["values"][2]
+        )
 
         status_label = tk.Label(
-            status_window,
+            edit_window,
             text="Select new status:"
         )
         status_label.pack(pady=10)
 
         status_dropdown = ttk.Combobox(
-            status_window,
+            edit_window,
             values=["Done", "In Progress", "Not Started"],
             state="readonly"
         )
-        status_dropdown.pack()
+        status_dropdown.pack(padx=10)
 
         status_dropdown.set(item["values"][4])
 
-        def confirm_status_update():
+        def confirm_task_update():
+            new_name = name_entry.get()
+
+            try:
+                new_start = date.fromisoformat(start_entry.get())
+                new_end = date.fromisoformat(end_entry.get())
+            except ValueError:
+                messagebox.showerror(
+                    "Invalid Date",
+                    "Please enter dates in the format YYYY-MM-DD."
+                )
+                return
+
             new_status = status_dropdown.get()
 
-            update_task(
+            updated = update_task(
                 tasks,
                 task_name,
+                new_name,
+                new_start,
+                new_end,
                 new_status
             )
+
+            if not updated:
+                return
 
             save_tasks(tasks)
 
             refresh_table()
-            status_window.destroy()
+            edit_window.destroy()
 
         update_button = tk.Button(
-            status_window,
+            edit_window,
             text="Update",
-            command=confirm_status_update
+            command=confirm_task_update
         )
 
         update_button.pack(pady=15)
@@ -199,16 +238,23 @@ def delete_selected_task():
         item = table.item(selected_item[0])
         task_name = item["values"][0]
 
-        delete_task(tasks, task_name)
+        confirm = messagebox.askyesno(
+            "Delete Task",
+            f"Are you sure you want to delete the task '{task_name}'?"
+        )
 
-        save_tasks(tasks)
-
-        refresh_table()
+        if confirm:
+            delete_task(tasks, task_name)
+            save_tasks(tasks)
+            refresh_table()
 
 def add_task_window():
     task_window = tk.Toplevel(window)
+
     task_window.title("Add Task")
-    task_window.geometry("350x250")
+
+    task_window.transient(window)
+    task_window.grab_set()
 
     task_label = tk.Label(
         task_window,
@@ -254,14 +300,30 @@ def add_task_window():
         values=["Done", "In Progress", "Not Started"],
         state="readonly"
     )
-    status_dropdown.pack()
+    status_dropdown.pack(padx=5)
 
     status_dropdown.set("Not Started")
 
     def save_new_task():
         new_task_name = task_entry.get()
-        new_task_start = date.fromisoformat(start_entry.get())
-        new_task_end = date.fromisoformat(end_entry.get())
+        
+        try:
+            new_task_start = date.fromisoformat(start_entry.get())
+            new_task_end = date.fromisoformat(end_entry.get())
+        except ValueError:
+            messagebox.showerror(
+                "Invalid Date",
+                "Please enter dates in the format YYYY-MM-DD."
+            )
+            return        
+
+        if not validate_dates(new_task_start, new_task_end):
+            messagebox.showerror(
+                "Invalid Date Range",
+                "End date cannot be earlier than start date."
+            )
+            return
+
         new_task_status = status_dropdown.get() 
 
         new_task = Task(
@@ -315,7 +377,7 @@ table.pack(fill="both", expand=True)
 
 update_button = tk.Button(
     window,
-    text="Update Status",
+    text="Update Task",
     command=update_selected_task
 )
 
