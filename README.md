@@ -27,6 +27,8 @@ charts, dashboards, and persistent project data.
 - Save task data to JSON
 - Automatically save changes
 - Display tasks in a desktop GUI
+- Edit task information
+- Improved date input
 
 ## Technologies
 
@@ -44,8 +46,6 @@ on improving task editing, project visualization, and usability.
 
 ## Planned Features
 
-- Edit task information
-- Improved date input
 - Gantt chart
 - Project dashboard
 - SQLite database
