@@ -1,6 +1,7 @@
 from datetime import date
 import tkinter as tk
 from tkinter import ttk, messagebox
+from tkcalendar import DateEntry
 import json
 
 class Task:
@@ -31,7 +32,6 @@ def update_task(tasks, task_name, new_name, new_start, new_end, new_status):
     task = find_task(tasks, task_name)
 
     if task is None:
-        print("Task not found.")
         return False
 
     if not validate_dates(new_start, new_end):
@@ -52,7 +52,6 @@ def delete_task(tasks, task_name):
     task = find_task(tasks, task_name)
 
     if task is None:
-        print("Task not found.")
         return
 
     tasks.remove(task)
@@ -89,15 +88,6 @@ def load_tasks():
     return tasks
 
 tasks = load_tasks()
-
-def select_task(event):
-    selected_item = table.selection()
-
-    if selected_item:
-        item = table.item(selected_item[0])
-        task_name = item["values"][0]
-
-        task = find_task(tasks, task_name)
 
 def refresh_table():
     for item in table.get_children():
@@ -150,15 +140,13 @@ def update_selected_task():
         )
         start_label.pack(pady=5)
 
-        start_entry = tk.Entry(
-            edit_window
+        start_entry = DateEntry(
+            edit_window,
+            date_pattern="yyyy-mm-dd"
         )
         start_entry.pack(pady=5)
 
-        start_entry.insert(
-            0,
-            item["values"][1]
-        )
+        start_entry.set_date(item["values"][1])
 
         end_label = tk.Label(
             edit_window,
@@ -166,15 +154,13 @@ def update_selected_task():
         )
         end_label.pack(pady=5)
 
-        end_entry = tk.Entry(
-            edit_window
+        end_entry = DateEntry(
+            edit_window,
+            date_pattern="yyyy-mm-dd"
         )
         end_entry.pack(pady=5)
 
-        end_entry.insert(
-            0,
-            item["values"][2]
-        )
+        end_entry.set_date(item["values"][2])
 
         status_label = tk.Label(
             edit_window,
@@ -273,8 +259,9 @@ def add_task_window():
     )
     start_label.pack(pady=5)
 
-    start_entry = tk.Entry(
-        task_window
+    start_entry = DateEntry(
+        task_window,
+        date_pattern="yyyy-mm-dd"
     )
     start_entry.pack()
 
@@ -284,8 +271,9 @@ def add_task_window():
     )
     end_label.pack(pady=5)
 
-    end_entry = tk.Entry(
-        task_window
+    end_entry = DateEntry(
+        task_window,
+        date_pattern="yyyy-mm-dd"
     )
     end_entry.pack()
 
@@ -359,8 +347,6 @@ table = ttk.Treeview(
     show="headings"
 )
 
-table.bind("<<TreeviewSelect>>", select_task)
-
 table.heading("Task", text="Task")
 table.heading("Start", text="Start")
 table.heading("End", text="End")
@@ -407,17 +393,6 @@ save_button = tk.Button(
 
 save_button.pack()
 
-for task in tasks:
-    table.insert(
-        "",
-        "end",
-        values=(
-            task.name,
-            task.start_date,
-            task.end_date,
-            task.duration,
-            task.status
-        )
-    )
+refresh_table()
     
 window.mainloop()
