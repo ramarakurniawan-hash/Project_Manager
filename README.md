@@ -17,18 +17,48 @@ charts, dashboards, and persistent project data.
 
 ## Current Features
 
-- Create tasks
-- Set start and end dates
-- Calculate task duration automatically
-- Set task status
-- Update task status
-- Delete tasks
-- Delete confirmation
-- Save task data to JSON
-- Automatically save changes
-- Display tasks in a desktop GUI
-- Edit task information
-- Improved date input
+- Task management
+  - Add new tasks
+  - Update existing tasks
+  - Delete tasks
+  - View all tasks in a table
+
+- Task information
+  - Task name
+  - Start date
+  - End date
+  - Automatically calculated duration
+  - Task status:
+    - Not Started
+    - In Progress
+    - Done
+
+- Inline table editing
+  - Double-click a task name to edit it directly
+  - Double-click a start date to edit it
+  - Double-click an end date to edit it
+  - Double-click a status to select a new status
+  - Press Enter to save an edit
+  - Click away from the editor to save
+  - Press Escape to cancel
+
+- Date handling
+  - Calendar-based date selection
+  - Prevents an end date from being earlier than the start date
+  - Prevents a start date from being later than the end date
+  - Automatically recalculates task duration when dates change
+
+- Data persistence
+  - Tasks are saved to tasks.json
+  - Tasks are automatically saved when changes are made
+  - Tasks retain a unique ID between sessions
+
+- GUI
+  - Tkinter-based desktop interface
+  - Editable task table
+  - Add Task dialog
+  - Update Task dialog
+  - Delete confirmation
 
 ## Technologies
 
@@ -39,18 +69,28 @@ charts, dashboards, and persistent project data.
 
 ## Current Status
 
-🚧 Work in progress
+ Work in progress
 
 The current version is a functional prototype. Development is focused
 on improving task editing, project visualization, and usability.
 
 ## Planned Features
 
-- Gantt chart
-- Project dashboard
-- SQLite database
-- Web-based interface
-- Multi-user/team functionality
+- [x] Task creation, updating, and deletion
+- [x] Task status management
+- [x] Date validation
+- [x] JSON data persistence
+- [x] Inline task editing
+- [x] Persistent task IDs
+- [ ] Gantt chart
+- [ ] Task dependencies
+- [ ] Task hierarchy / indentation
+- [ ] Task reordering
+- [ ] Dashboard / project overview
+- [ ] Excel export
+- [ ] SQLite database
+- [ ] Web-based version
+- [ ] Multi-user/team functionality
 
 ## Why I Built This
 
