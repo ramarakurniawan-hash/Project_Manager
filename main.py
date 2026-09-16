@@ -138,6 +138,15 @@ def handle_click_away(event):
         close_editor()
 
 def refresh_table():
+    open_states = {}
+
+    def collect_open_states(parent=""):
+        for item in table.get_children(parent):
+            open_states[item] = table.item(item, "open")
+            collect_open_states(item)
+
+    collect_open_states()
+
     for item in table.get_children():
         table.delete(item)
 
@@ -157,7 +166,8 @@ def refresh_table():
                 task.duration,
                 task.status
             ),
-            open=True
+            open=open_states.get(task.id, True),
+            tags=("row_even" if len(table.get_children(parent)) % 2 ==0 else "row_odd",)
         )
 
 def edit_task_name(event):
@@ -166,7 +176,7 @@ def edit_task_name(event):
     row_id = table.identify_row(event.y)
     column = table.identify_column(event.x)
 
-    if not row_id or column != "#1":
+    if not row_id or column != "#0":
         return
 
     close_editor()
@@ -175,8 +185,8 @@ def edit_task_name(event):
 
     current_value = table.item(
         row_id,
-        "values"
-    )[0]
+        "text"
+    )
 
     editor = tk.Entry(table)
 
@@ -242,7 +252,7 @@ def edit_task_start_date(event):
     row_id = table.identify_row(event.y)
     column = table.identify_column(event.x)
 
-    if not row_id or column != "#2":
+    if not row_id or column != "#1":
         return
 
     close_editor()
@@ -252,7 +262,7 @@ def edit_task_start_date(event):
     current_value = table.item(
         row_id,
         "values"
-    )[1]
+    )[0]
 
     editor = DateEntry(
         table,
@@ -323,7 +333,7 @@ def edit_task_end_date(event):
     row_id = table.identify_row(event.y)
     column = table.identify_column(event.x)
 
-    if not row_id or column != "#3":
+    if not row_id or column != "#2":
         return
 
     close_editor()
@@ -333,7 +343,7 @@ def edit_task_end_date(event):
     current_value = table.item(
         row_id,
         "values"
-    )[2]
+    )[1]
 
     editor = DateEntry(
         table,
@@ -402,7 +412,7 @@ def edit_task_status(event):
     row_id = table.identify_row(event.y)
     column = table.identify_column(event.x)
 
-    if not row_id or column != "#5":
+    if not row_id or column != "#4":
         return
 
     close_editor()
@@ -412,7 +422,7 @@ def edit_task_status(event):
     current_value = table.item(
         row_id,
         "values"
-    )[4]
+    )[3]
 
     editor = ttk.Combobox(
         table,
@@ -472,17 +482,24 @@ def edit_task_status(event):
 def edit_cell(event):
     column = table.identify_column(event.x)
 
-    if column == "#1":
+    if column == "#0":
+        element = table.identify_element(event.x, event.y)
+
+        if "indicator" in element:
+            return
+        
         edit_task_name(event)
 
-    elif column == "#2":
+    elif column == "#1":
         edit_task_start_date(event)
 
-    elif column == "#3":
+    elif column == "#2":
         edit_task_end_date(event)
 
-    elif column == "#5":
+    elif column == "#4":
         edit_task_status(event)
+
+    return "break"
 
 def update_selected_task():
     selected_item = table.selection()
@@ -720,10 +737,69 @@ window = tk.Tk()
 window.title("Pro-Man")
 window.geometry("800x400")
 
+style = ttk.Style()
+style.theme_use("clam")
+
+style.configure(
+    "Treeview",
+    bordercolor="#cccccc"
+)
+
+print("Current theme:", style.theme_use())
+print("Treeview layout:", style.layout("Treeview"))
+
+print(
+    "Treeview field options",
+    style.element_options("Treeview.field")
+)
+
+print("Available themes:", style.theme_names())
+
+print(
+    "Treeview element options:",
+    style.element_options("Treeview")
+)
+
+style.configure(
+    "Treeview",
+    rowheight=28,
+    font=("Segoe UI", 10)
+)
+
+style.configure(
+    "Treeview.Heading",
+    font=("Segoe UI", 10, "bold")
+)
+
+style.configure(
+    "Treeview",
+    borderwidth=1,
+    relief="solid"
+)
+
+style.layout(
+    "Grid.Treeview",
+    [
+        (
+            "Treeview.treearea",
+            {
+                "sticky": "nswe"
+            }
+        )
+    ]
+)
+
+style.configure(
+    "Grid.Treeview",
+    rowheight=28,
+    font=("Segoe UI", 10)
+)
+
 table = ttk.Treeview(
     window,
     columns=("Start", "End", "Duration", "Status"),
-    show="tree headings"
+    show="tree headings",
+    style="Grid.Treeview"
 )
 
 table.heading("#0", text="Task")
@@ -732,11 +808,54 @@ table.heading("End", text="End")
 table.heading("Duration", text="Duration")
 table.heading("Status", text="Status")
 
-table.column("#0", width=200, stretch=True)
-table.column("Start", width=120, stretch=True)
-table.column("End", width=120, stretch=True)
-table.column("Duration", width=100, stretch=True)
-table.column("Status", width=150, stretch=True)
+table.column(
+    "#0",
+    width=260,
+    minwidth=180,
+    stretch=True
+)
+
+table.column(
+    "Start",
+    width=110,
+    minwidth=100,
+    anchor="center",
+    stretch=True
+)
+
+table.column(
+    "End",
+    width=110,
+    minwidth=100,
+    anchor="center",
+    stretch=True
+)
+
+table.column(
+    "Duration",
+    width=90,
+    minwidth=80,
+    anchor="center",
+    stretch=True
+)
+
+table.column(
+    "Status",
+    width=130,
+    minwidth=110,
+    anchor="center",
+    stretch=True
+)
+
+table.tag_configure(
+    "row_even",
+    background="#f7f7f7"
+)
+
+table.tag_configure(
+    "row_odd",
+    background="#ffffff"
+)
 
 table.pack(fill="both", expand=True)
 
