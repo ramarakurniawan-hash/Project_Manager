@@ -6,12 +6,13 @@ from tkcalendar import DateEntry
 import json
 
 class Task:
-    def __init__(self, name, start_date, end_date, status):
+    def __init__(self, name, start_date, end_date, status, parent_id=None):
         self.id = str(uuid.uuid4())
         self.name = name
         self.start_date = start_date
         self.end_date = end_date
         self.status = status
+        self.parent_id = parent_id
 
     @property
     def duration(self):
@@ -30,8 +31,8 @@ def validate_dates(start_date, end_date):
     
     return True
 
-def update_task(tasks, task_name, new_name, new_start, new_end, new_status):
-    task = find_task(tasks, task_name)
+def update_task(tasks, task_id, new_name, new_start, new_end, new_status):
+    task = find_task(tasks, task_id)
 
     if task is None:
         return False
@@ -50,8 +51,8 @@ def update_task(tasks, task_name, new_name, new_start, new_end, new_status):
 
     return True
 
-def delete_task(tasks, task_name):
-    task = find_task(tasks, task_name)
+def delete_task(tasks, task_id):
+    task = find_task(tasks, task_id)
 
     if task is None:
         return
@@ -67,7 +68,8 @@ def save_tasks(tasks):
             "name": task.name,
             "start_date": task.start_date.isoformat(),
             "end_date": task.end_date.isoformat(),
-            "status": task.status   
+            "status": task.status,
+            "parent_id": task.parent_id   
         })
 
     with open("tasks.json", "w") as file:
@@ -84,7 +86,8 @@ def load_tasks():
             task["name"],
             date.fromisoformat(task["start_date"]),
             date.fromisoformat(task["end_date"]),
-            task["status"]
+            task["status"],
+            parent_id=task.get("parent_id")
         )
 
         new_task.id = task["id"]
@@ -92,6 +95,19 @@ def load_tasks():
         tasks.append(new_task)
 
     return tasks
+
+def get_hierarchy(tasks):
+    ordered_tasks = []
+
+    def add_children(parent_id):
+        for task in tasks:
+            if task.parent_id == parent_id:
+                ordered_tasks.append(task)
+                add_children(task.id)
+
+    add_children(None)
+
+    return ordered_tasks
 
 tasks = load_tasks()
 
@@ -125,18 +141,23 @@ def refresh_table():
     for item in table.get_children():
         table.delete(item)
 
-    for task in tasks:
+    ordered_tasks = get_hierarchy(tasks)
+
+    for task in ordered_tasks:
+        parent = task.parent_id if task.parent_id else ""
+
         table.insert(
-            "",
+            parent,
             "end",
             iid=task.id,
+            text=task.name,
             values=(
-                task.name,
                 task.start_date,
                 task.end_date,
                 task.duration,
                 task.status
-            )
+            ),
+            open=True
         )
 
 def edit_task_name(event):
@@ -468,7 +489,7 @@ def update_selected_task():
 
     if selected_item:
         item = table.item(selected_item[0])
-        task_name = item["values"][0]
+        task_id = selected_item[0]
 
         edit_window = tk.Toplevel(window)
         edit_window.title("Update Task")
@@ -488,7 +509,7 @@ def update_selected_task():
         name_entry.pack(pady=5)
         name_entry.insert(
             0,
-            item["values"][0]
+            item["text"][0]
         )
 
         start_label = tk.Label(
@@ -503,7 +524,7 @@ def update_selected_task():
         )
         start_entry.pack(pady=5)
 
-        start_entry.set_date(item["values"][1])
+        start_entry.set_date(item["values"][0])
 
         end_label = tk.Label(
             edit_window,
@@ -517,7 +538,7 @@ def update_selected_task():
         )
         end_entry.pack(pady=5)
 
-        end_entry.set_date(item["values"][2])
+        end_entry.set_date(item["values"][1])
 
         status_label = tk.Label(
             edit_window,
@@ -532,7 +553,7 @@ def update_selected_task():
         )
         status_dropdown.pack(padx=10)
 
-        status_dropdown.set(item["values"][4])
+        status_dropdown.set(item["values"][3])
 
         def confirm_task_update():
             new_name = name_entry.get()
@@ -551,7 +572,7 @@ def update_selected_task():
 
             updated = update_task(
                 tasks,
-                task_name,
+                task_id,
                 new_name,
                 new_start,
                 new_end,
@@ -579,7 +600,8 @@ def delete_selected_task():
 
     if selected_item:
         item = table.item(selected_item[0])
-        task_name = item["values"][0]
+        task_id = item["values"][0]
+        task_name = item["text"]
 
         confirm = messagebox.askyesno(
             "Delete Task",
@@ -587,7 +609,7 @@ def delete_selected_task():
         )
 
         if confirm:
-            delete_task(tasks, task_name)
+            delete_task(tasks, task_id)
             save_tasks(tasks)
             refresh_table()
 
@@ -700,17 +722,17 @@ window.geometry("800x400")
 
 table = ttk.Treeview(
     window,
-    columns=("Task", "Start", "End", "Duration", "Status"),
-    show="headings"
+    columns=("Start", "End", "Duration", "Status"),
+    show="tree headings"
 )
 
-table.heading("Task", text="Task")
+table.heading("#0", text="Task")
 table.heading("Start", text="Start")
 table.heading("End", text="End")
 table.heading("Duration", text="Duration")
 table.heading("Status", text="Status")
 
-table.column("Task", width=200, stretch=True)
+table.column("#0", width=200, stretch=True)
 table.column("Start", width=120, stretch=True)
 table.column("End", width=120, stretch=True)
 table.column("Duration", width=100, stretch=True)
