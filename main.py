@@ -6,13 +6,22 @@ from tkcalendar import DateEntry
 import json
 
 class Task:
-    def __init__(self, name, start_date, end_date, status, parent_id=None):
+    def __init__(
+        self,
+        name,
+        start_date,
+        end_date,
+        status,
+        parent_id=None,
+        order=0
+    ):
         self.id = str(uuid.uuid4())
         self.name = name
         self.start_date = start_date
         self.end_date = end_date
         self.status = status
         self.parent_id = parent_id
+        self.order = order
 
     @property
     def duration(self):
@@ -69,7 +78,8 @@ def save_tasks(tasks):
             "start_date": task.start_date.isoformat(),
             "end_date": task.end_date.isoformat(),
             "status": task.status,
-            "parent_id": task.parent_id   
+            "parent_id": task.parent_id,
+            "order": task.order
         })
 
     with open("tasks.json", "w") as file:
@@ -87,7 +97,8 @@ def load_tasks():
             date.fromisoformat(task["start_date"]),
             date.fromisoformat(task["end_date"]),
             task["status"],
-            parent_id=task.get("parent_id")
+            parent_id=task.get("parent_id"),
+            order=task.get("order", 0)
         )
 
         new_task.id = task["id"]
@@ -96,22 +107,279 @@ def load_tasks():
 
     return tasks
 
+tasks = load_tasks()
+active_editor = None
+
 def get_hierarchy(tasks):
     ordered_tasks = []
 
     def add_children(parent_id):
-        for task in tasks:
-            if task.parent_id == parent_id:
-                ordered_tasks.append(task)
-                add_children(task.id)
+        children =[
+            task
+            for task in tasks
+            if task.parent_id == parent_id
+        ]
+
+        children.sort(
+            key=lambda task: task.order
+        )
+
+        for task in children:
+            ordered_tasks.append(task)
+            add_children(task.id)
 
     add_children(None)
 
     return ordered_tasks
 
-tasks = load_tasks()
+def normalize_orders(tasks):
+    parents = set(
+        task.parent_id
+        for task in tasks
+    )
 
+    for parent_id in parents:
+        siblings = [
+            task
+            for task in tasks
+            if task.parent_id == parent_id
+        ]
+
+        siblings.sort(
+            key=lambda task: task.order
+        )
+
+        for index, task in enumerate(siblings):
+            task.order = index
+
+def initialize_orders(tasks):
+    for parent_id in set(
+        task.parent_id
+        for task in tasks
+    ):
+        siblings = [
+            task
+            for task in tasks
+            if task.parent_id == parent_id
+        ]
+
+        for index, task in enumerate(siblings):
+            task.order = index
+
+def indent_task(tasks, task_id):
+    task = find_task(tasks, task_id)
+
+    if task is None:
+        return False
+    
+    current_parent_id = task.parent_id
+
+    siblings = [
+        sibling
+        for sibling in tasks
+        if sibling.parent_id == current_parent_id
+    ]
+
+    siblings.sort(
+        key=lambda sibling: sibling.order
+    )
+
+    task_index = siblings.index(task)
+
+    if task_index == 0:
+        return False
+
+    previous_sibling = siblings[task_index - 1]
+
+    task.parent_id = previous_sibling.id
+
+    new_siblings =[
+        sibling
+        for sibling in tasks
+        if sibling.parent_id == previous_sibling.id
+        and sibling.id != task.id
+    ]
+
+    task.order = len(new_siblings)
+
+    normalize_orders(tasks)
+
+    return True
+
+def outdent_task(tasks, task_id):
+    task = find_task(tasks, task_id)
+
+    if task is None:
+        return False
+
+    if task.parent_id is None:
+        return False
+
+    parent = find_task(
+        tasks,
+        task.parent_id
+    )
+
+    if parent is None:
+        return False
+
+    new_parent_id = parent.parent_id
+
+    siblings = [
+        sibling
+        for sibling in tasks
+        if sibling.parent_id == new_parent_id
+        and sibling.id != task.id
+    ]
+
+    siblings.sort(
+        key=lambda sibling: sibling.order
+    )
+
+    parent_index = siblings.index(parent)
+
+    task.parent_id = new_parent_id
+
+    siblings.insert(
+        parent_index + 1,
+        task
+    )
+
+    for index, sibling in enumerate(siblings):
+        sibling.order = index
+
+    return True
+
+def move_task_up(tasks, task_id):
+    task = find_task(tasks, task_id)
+
+    if task is None:
+        return False
+
+    siblings = [
+        sibling
+        for sibling in tasks
+        if sibling.parent_id == task.parent_id
+    ]
+
+    siblings.sort(
+        key=lambda sibling: sibling.order
+    )
+
+    task_index = siblings.index(task)
+
+    if task_index == 0:
+        return False
+
+    previous_sibling = siblings[task_index - 1]
+
+    task.order, previous_sibling.order = (
+        previous_sibling.order,
+        task.order
+    )
+
+    return True
+
+def move_task_down(tasks, task_id):
+    task = find_task(tasks, task_id)
+
+    if task is None:
+        return False
+
+    siblings = [
+        sibling
+        for sibling in tasks
+        if sibling.parent_id == task.parent_id
+    ]
+
+    siblings.sort(
+        key=lambda sibling: sibling.order    
+    )
+
+    task_index = siblings.index(task)
+
+    if task_index == len(siblings) -1:
+        return False
+
+    next_sibling = siblings[task_index + 1]
+
+    task.order, next_sibling.order = (
+        next_sibling.order,
+        task.order
+    )
+
+    return True
+
+def indent_selected_task():
+    selected_item = table.selection()
+
+    if not selected_item:
+        return
+
+    task_id = selected_item[0]
+
+    changed = indent_task(
+        tasks,
+        task_id
+    )
+
+    if changed:
+        save_tasks(tasks)
+        refresh_table()
+
+def outdent_selected_task():
+    selected_item = table.selection()
+
+    if not selected_item:
+        return
+
+    task_id = selected_item[0]
+
+    changed = outdent_task(
+        tasks,
+        task_id
+    )
+
+    if changed:
+        save_tasks(tasks)
+        refresh_table()
+
+def move_selected_task_up():
+    selected_item = table.selection()
+
+    if not selected_item:
+        return
+
+    task_id = selected_item[0]
+
+    changed = move_task_up(
+        tasks,
+        task_id
+    )
+
+    if changed:
+        save_tasks(tasks)
+        refresh_table()
+
+tasks = load_tasks()
 active_editor = None
+
+def move_selected_task_down():
+    selected_item = table.selection()
+
+    if not selected_item:
+        return
+
+    task_id = selected_item[0]
+
+    changed = move_task_down(
+        tasks,
+        task_id
+    )
+
+    if changed:
+        save_tasks(tasks)
+        refresh_table()
 
 def close_editor():
     global active_editor
@@ -742,26 +1010,6 @@ style.theme_use("clam")
 
 style.configure(
     "Treeview",
-    bordercolor="#cccccc"
-)
-
-print("Current theme:", style.theme_use())
-print("Treeview layout:", style.layout("Treeview"))
-
-print(
-    "Treeview field options",
-    style.element_options("Treeview.field")
-)
-
-print("Available themes:", style.theme_names())
-
-print(
-    "Treeview element options:",
-    style.element_options("Treeview")
-)
-
-style.configure(
-    "Treeview",
     rowheight=28,
     font=("Segoe UI", 10)
 )
@@ -769,12 +1017,6 @@ style.configure(
 style.configure(
     "Treeview.Heading",
     font=("Segoe UI", 10, "bold")
-)
-
-style.configure(
-    "Treeview",
-    borderwidth=1,
-    relief="solid"
 )
 
 style.layout(
@@ -857,42 +1099,127 @@ table.tag_configure(
     background="#ffffff"
 )
 
-table.pack(fill="both", expand=True)
 
-table.bind("<Double-1>", edit_cell)
-table.bind("<Button-1>", handle_click_away)
+ribbon = tk.Frame(window)
 
-update_button = tk.Button(
-    window,
-    text="Update Task",
-    command=update_selected_task
+ribbon.pack(
+    fill="x"
 )
 
-update_button.pack()
 
-add_button = tk.Button(
-    window,
-    text="Add Task",
-    command=add_task_window
+file_group = tk.LabelFrame(
+    ribbon,
+    text="File"
 )
 
-add_button.pack()
-
-delete_button = tk.Button(
-    window,
-    text="Delete Task",
-    command=delete_selected_task
+file_group.pack(
+    side="left"
 )
 
-delete_button.pack()
+task_group = tk.LabelFrame(
+    ribbon,
+    text="Task"
+)
+
+task_group.pack(
+    side="left"
+)
+
+hierarchy_group = tk.LabelFrame(
+    ribbon,
+    text="Hierarchy"
+)
+
+hierarchy_group.pack(
+    side="left"
+)
+
 
 save_button = tk.Button(
-    window,
+    file_group,
     text="Save",
     command=lambda: save_tasks(tasks)
 )
 
-save_button.pack()
+save_button.pack(
+    side="left"
+)
+
+add_button = tk.Button(
+    task_group,
+    text="Add Task",
+    command=add_task_window
+)
+
+add_button.pack(
+    side="left"
+)
+
+update_button = tk.Button(
+    task_group,
+    text="Update Task",
+    command=update_selected_task
+)
+
+update_button.pack(
+    side="left"
+)
+
+delete_button = tk.Button(
+    task_group,
+    text="Delete Task",
+    command=delete_selected_task
+)
+
+delete_button.pack(
+    side="left"
+)
+
+
+outdent_button = tk.Button(
+    hierarchy_group,
+    text="Outdent",
+    command=outdent_selected_task
+)
+
+outdent_button.pack(
+    side="left"
+)
+
+indent_button = tk.Button(
+    hierarchy_group,
+    text="Indent",
+    command=indent_selected_task
+)
+
+indent_button.pack(
+    side="left"
+)
+
+move_up_button = tk.Button(
+    hierarchy_group,
+    text="Move Up",
+    command=move_selected_task_up
+)
+
+move_up_button.pack(
+    side="left"
+)
+
+move_down_button = tk.Button(
+    hierarchy_group,
+    text="Move Down",
+    command=move_selected_task_down
+)
+
+move_down_button.pack(
+    side="left"
+)
+
+table.pack(fill="both", expand=True)
+
+table.bind("<Double-1>", edit_cell)
+table.bind("<Button-1>", handle_click_away)
 
 refresh_table()
     
