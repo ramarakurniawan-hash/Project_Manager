@@ -1,5 +1,5 @@
 import uuid
-from datetime import date
+from datetime import date, timedelta
 import tkinter as tk
 from tkinter import ttk, messagebox
 from tkcalendar import DateEntry
@@ -39,6 +39,9 @@ def validate_dates(start_date, end_date):
         return False
     
     return True
+
+def calculate_end_date(start_date, duration):
+    return start_date + timedelta(days=duration - 1)
 
 def update_task(tasks, task_id, new_name, new_start, new_end, new_status):
     task = find_task(tasks, task_id)
@@ -148,20 +151,6 @@ def normalize_orders(tasks):
         siblings.sort(
             key=lambda task: task.order
         )
-
-        for index, task in enumerate(siblings):
-            task.order = index
-
-def initialize_orders(tasks):
-    for parent_id in set(
-        task.parent_id
-        for task in tasks
-    ):
-        siblings = [
-            task
-            for task in tasks
-            if task.parent_id == parent_id
-        ]
 
         for index, task in enumerate(siblings):
             task.order = index
@@ -361,9 +350,6 @@ def move_selected_task_up():
         save_tasks(tasks)
         refresh_table()
 
-tasks = load_tasks()
-active_editor = None
-
 def move_selected_task_down():
     selected_item = table.selection()
 
@@ -402,10 +388,15 @@ def cancel_editor():
         active_editor = None
 
 def handle_click_away(event):
+    print("CLICK:", event.widget)
+
     if active_editor is not None:
         close_editor()
 
 def refresh_table():
+    selected_item = table.selection()
+    selected_id = selected_item[0] if selected_item else None
+
     open_states = {}
 
     def collect_open_states(parent=""):
@@ -437,6 +428,10 @@ def refresh_table():
             open=open_states.get(task.id, True),
             tags=("row_even" if len(table.get_children(parent)) % 2 ==0 else "row_odd",)
         )
+
+    if selected_id and table.exists(selected_id):
+        table.selection_set(selected_id)
+        table.focus(selected_id)
 
 def edit_task_name(event):
     global active_editor
@@ -561,25 +556,28 @@ def edit_task_start_date(event):
         if not task:
             return False
 
-        if task:
-            if not validate_dates(new_start, task.end_date):
-                messagebox.showerror(
-                    "Invalid Date Range",
-                    "Start date cannot be later than end date."
-                )
-                editor.focus()
-                editor.drop_down()
-                return False
 
-            task.start_date = new_start
-            save_tasks(tasks)
+        if not validate_dates(new_start, task.end_date):
+            messagebox.showerror(
+                "Invalid Date Range",
+                "Start date cannot be later than end date."
+            )
+            editor.focus()
+            editor.after(
+                10,
+                editor.drop_down
+            )
+            return False
 
-            active_editor = None
+        task.start_date = new_start
+        save_tasks(tasks)
 
-            editor.destroy()
-            refresh_table()
+        active_editor = None
 
-            return True
+        editor.destroy()
+        refresh_table()
+
+        return True
 
     active_editor = {
         "editor": editor,
@@ -589,6 +587,11 @@ def edit_task_start_date(event):
     editor.bind(
         "<Return>",
         finish_edit
+    )
+
+    editor.bind(
+        "<<DateEntrySelected>>",
+        lambda event: editor.after(10, finish_edit)
     )
 
     editor.bind(
@@ -646,7 +649,10 @@ def edit_task_end_date(event):
                 "End date cannot be earlier than start date."
             )
             editor.focus()
-            editor.drop_down()
+            editor.after(
+                10,
+                editor.drop_down
+            )
             return False
 
         task.end_date = new_end
@@ -658,6 +664,109 @@ def edit_task_end_date(event):
         refresh_table()
 
         return True
+
+    active_editor = {
+        "editor": editor,
+        "finish": finish_edit
+    }
+
+    editor.bind(
+        "<Return>",
+        finish_edit
+    )
+
+    editor.bind(
+        "<<DateEntrySelected>>",
+        finish_edit
+    )
+
+    editor.bind(
+        "<Escape>",
+        lambda event: cancel_editor()
+    )
+
+def edit_task_duration(event):
+    global active_editor
+
+    row_id = table.identify_row(event.y)
+    column = table.identify_column(event.x)
+
+    if not row_id or column != "#3":
+        return
+
+    close_editor()
+
+    x, y, width, height = table.bbox(row_id, column)
+
+    current_value = table.item(
+        row_id,
+        "values"
+    )[2]
+
+    editor = tk.Entry(table)
+
+    editor.insert(
+        0,
+        current_value
+    )
+
+    editor.select_range(
+        0,
+        tk.END
+    )
+
+    editor.place(
+        x=x,
+        y=y,
+        width=width,
+        height=height
+    )
+
+    editor.focus()
+
+    def finish_edit(event=None):
+        global active_editor
+        value = editor.get().strip()
+
+        try:
+            new_duration = int(value)
+        except ValueError:
+            messagebox.showerror(
+                "Invalid Duration",
+                "Duration must be a whole number of days."
+            )
+            editor.focus()
+            editor.select_range(0, tk.END)
+            return False
+        
+        if new_duration < 1:
+            messagebox.showerror(
+                "Invalid Duration",
+                "Duration must be at least 1 day."
+            )
+            editor.focus()
+            editor.select_range(0, tk.END)
+            return False
+
+        task_id = row_id
+        task = find_task(tasks, task_id)
+
+        if not task:
+            return False
+
+        new_end = calculate_end_date(
+            task.start_date,
+            new_duration
+        )
+
+        task.end_date = new_end
+
+        save_tasks(tasks)
+
+        active_editor = None
+
+        editor.destroy()
+        refresh_table()
 
     active_editor = {
         "editor": editor,
@@ -763,6 +872,9 @@ def edit_cell(event):
 
     elif column == "#2":
         edit_task_end_date(event)
+
+    elif column == "#3":
+        edit_task_duration(event)
 
     elif column == "#4":
         edit_task_status(event)
@@ -885,7 +997,7 @@ def delete_selected_task():
 
     if selected_item:
         item = table.item(selected_item[0])
-        task_id = item["values"][0]
+        task_id = selected_item[0]
         task_name = item["text"]
 
         confirm = messagebox.askyesno(

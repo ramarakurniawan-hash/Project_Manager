@@ -29,11 +29,11 @@
     {
         "id": "be9236d1-cc73-47a7-9533-c365829e49d9",
         "name": "child 4",
-        "start_date": "2026-11-10",
-        "end_date": "2026-11-14",
+        "start_date": "2026-11-02",
+        "end_date": "2026-11-08",
         "status": "In Progress",
-        "parent_id": "3f679ac9-bc24-4e58-b7eb-bc7de6c3e7b3",
-        "order": 0
+        "parent_id": "9aacd742-6211-4f44-aa71-a39b181b1f60",
+        "order": 2
     },
     {
         "id": "3f679ac9-bc24-4e58-b7eb-bc7de6c3e7b3",
@@ -92,8 +92,8 @@
     {
         "id": "9aacd742-6211-4f44-aa71-a39b181b1f60",
         "name": "child 1",
-        "start_date": "2026-09-17",
-        "end_date": "2026-09-17",
+        "start_date": "2026-09-15",
+        "end_date": "2026-09-25",
         "status": "Not Started",
         "parent_id": "8b40a558-729e-4163-b114-1b64a3017e11",
         "order": 1
