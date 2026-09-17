@@ -5,7 +5,8 @@
         "start_date": "2026-09-10",
         "end_date": "2026-09-16",
         "status": "Done",
-        "parent_id": null
+        "parent_id": null,
+        "order": 0
     },
     {
         "id": "4dcd22bf-2edb-49cf-a44f-39ffabf40db3",
@@ -13,47 +14,53 @@
         "start_date": "2026-09-16",
         "end_date": "2026-09-30",
         "status": "Done",
-        "parent_id": "31588176-ac2a-446c-9134-181ac011c993"
+        "parent_id": "31588176-ac2a-446c-9134-181ac011c993",
+        "order": 0
     },
     {
         "id": "efe2d208-0275-45da-9eb5-4e3239cd8bbc",
-        "name": "DSFsdf",
+        "name": "child 3",
         "start_date": "2026-10-02",
         "end_date": "2026-10-23",
         "status": "Not Started",
-        "parent_id": null
+        "parent_id": "8b40a558-729e-4163-b114-1b64a3017e11",
+        "order": 0
     },
     {
         "id": "be9236d1-cc73-47a7-9533-c365829e49d9",
-        "name": "sdcsdc",
+        "name": "child 4",
         "start_date": "2026-11-10",
         "end_date": "2026-11-14",
         "status": "In Progress",
-        "parent_id": null
+        "parent_id": "3f679ac9-bc24-4e58-b7eb-bc7de6c3e7b3",
+        "order": 0
     },
     {
         "id": "3f679ac9-bc24-4e58-b7eb-bc7de6c3e7b3",
-        "name": "edvngtnbfgb",
+        "name": "child 1.2",
         "start_date": "2026-11-12",
         "end_date": "2026-12-12",
         "status": "In Progress",
-        "parent_id": null
+        "parent_id": "9aacd742-6211-4f44-aa71-a39b181b1f60",
+        "order": 1
     },
     {
         "id": "39f9e94b-2cf5-40b6-b58a-109db3c9edd8",
-        "name": "fgrbedfvv",
+        "name": "child 2",
         "start_date": "2026-11-04",
         "end_date": "2026-12-01",
         "status": "Not Started",
-        "parent_id": null
+        "parent_id": "9aacd742-6211-4f44-aa71-a39b181b1f60",
+        "order": 0
     },
     {
         "id": "8b40a558-729e-4163-b114-1b64a3017e11",
-        "name": "frvfvzdfvfdv",
+        "name": "parent",
         "start_date": "2026-09-07",
         "end_date": "2026-09-30",
         "status": "Not Started",
-        "parent_id": null
+        "parent_id": null,
+        "order": 1
     },
     {
         "id": "b3d31bc3-c04b-4cbe-abbf-277006f577d9",
@@ -61,7 +68,8 @@
         "start_date": "2026-09-09",
         "end_date": "2026-09-25",
         "status": "Done",
-        "parent_id": "34b826b5-ae4f-4359-b5fb-1cdd3d2512d3"
+        "parent_id": "34b826b5-ae4f-4359-b5fb-1cdd3d2512d3",
+        "order": 0
     },
     {
         "id": "34b826b5-ae4f-4359-b5fb-1cdd3d2512d3",
@@ -69,6 +77,25 @@
         "start_date": "2026-09-16",
         "end_date": "2026-09-16",
         "status": "Done",
-        "parent_id": "31588176-ac2a-446c-9134-181ac011c993"
+        "parent_id": "31588176-ac2a-446c-9134-181ac011c993",
+        "order": 2
+    },
+    {
+        "id": "c5189051-f75f-44f4-82e5-72b06f5f7d1b",
+        "name": "wdichbnawdc",
+        "start_date": "2026-09-17",
+        "end_date": "2026-09-30",
+        "status": "Not Started",
+        "parent_id": "31588176-ac2a-446c-9134-181ac011c993",
+        "order": 1
+    },
+    {
+        "id": "9aacd742-6211-4f44-aa71-a39b181b1f60",
+        "name": "child 1",
+        "start_date": "2026-09-17",
+        "end_date": "2026-09-17",
+        "status": "Not Started",
+        "parent_id": "8b40a558-729e-4163-b114-1b64a3017e11",
+        "order": 1
     }
 ]
