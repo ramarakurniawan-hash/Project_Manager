@@ -29,7 +29,7 @@
     {
         "id": "be9236d1-cc73-47a7-9533-c365829e49d9",
         "name": "child 4",
-        "start_date": "2026-11-02",
+        "start_date": "2026-01-01",
         "end_date": "2026-11-08",
         "status": "In Progress",
         "parent_id": "9aacd742-6211-4f44-aa71-a39b181b1f60",
@@ -37,9 +37,9 @@
     },
     {
         "id": "3f679ac9-bc24-4e58-b7eb-bc7de6c3e7b3",
-        "name": "child 1.2",
-        "start_date": "2026-11-12",
-        "end_date": "2026-12-12",
+        "name": "child 3",
+        "start_date": "2026-11-26",
+        "end_date": "2026-12-01",
         "status": "In Progress",
         "parent_id": "9aacd742-6211-4f44-aa71-a39b181b1f60",
         "order": 1
