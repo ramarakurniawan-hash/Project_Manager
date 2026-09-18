@@ -388,8 +388,6 @@ def cancel_editor():
         active_editor = None
 
 def handle_click_away(event):
-    print("CLICK:", event.widget)
-
     if active_editor is not None:
         close_editor()
 
@@ -428,6 +426,15 @@ def refresh_table():
             open=open_states.get(task.id, True),
             tags=("row_even" if len(table.get_children(parent)) % 2 ==0 else "row_odd",)
         )
+
+    table.insert(
+        "",
+        "end",
+        iid="__add_task__",
+        text="+Add task",
+        values=("", "", "", ""),
+        tags=("add_task_row")
+    )
 
     if selected_id and table.exists(selected_id):
         table.selection_set(selected_id)
@@ -509,6 +516,62 @@ def edit_task_name(event):
         lambda event: cancel_editor()
     )
 
+def edit_new_task_name(event):
+    global active_editor
+
+    row_id = table.identify_row(event.y)
+
+    if not row_id or row_id != "__add_task__":
+        return
+
+    close_editor()
+
+    x, y, width, height = table.bbox(
+        row_id,
+        "#0"
+    )
+
+    editor = tk.Entry(table)
+
+    editor.place(
+        x=x,
+        y=y,
+        width=width,
+        height=height
+    )
+
+    editor.focus()
+
+    def finish_edit(event=None):
+        global active_editor
+
+        new_name = editor.get().strip()
+
+        if not new_name:
+            editor.destroy()
+            active_editor = None
+            return True
+
+        # Task creation will go here later
+
+        return False
+
+    active_editor = {
+        "editor": editor,
+        "finish": finish_edit
+    }
+
+    editor.bind(
+        "<Return>",
+        finish_edit
+    )
+
+    editor.bind(
+        "<Escape>",
+        lambda event: cancel_editor()
+    )
+
+
 def edit_task_start_date(event):
     global active_editor
 
@@ -543,6 +606,11 @@ def edit_task_start_date(event):
 
     editor.focus()
     editor.drop_down()
+
+    editor._calendar.bind(
+        "<FocusOut>",
+        lambda event: None,
+    )
 
     def finish_edit(event=None):
         global active_editor
@@ -632,6 +700,11 @@ def edit_task_end_date(event):
 
     editor.focus()
     editor.drop_down()
+
+    editor._calendar.bind(
+        "<FocusOut>",
+        lambda event: None,
+    )
 
     def finish_edit(event=None):
         global active_editor
@@ -857,10 +930,18 @@ def edit_task_status(event):
     )
 
 def edit_cell(event):
+    row_id = table.identify_row(event.y)
     column = table.identify_column(event.x)
 
+    if row_id == "__add_task__":
+        edit_new_task_name(event)
+        return "break"
+
     if column == "#0":
-        element = table.identify_element(event.x, event.y)
+        element = table.identify_element(
+            event.x,
+            event.y
+        )
 
         if "indicator" in element:
             return
@@ -1209,6 +1290,11 @@ table.tag_configure(
 table.tag_configure(
     "row_odd",
     background="#ffffff"
+)
+
+table.tag_configure(
+    "add_task_row",
+    foreground="gray"
 )
 
 
