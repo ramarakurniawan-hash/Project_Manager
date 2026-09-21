@@ -71,6 +71,8 @@ def delete_task(tasks, task_id):
 
     tasks.remove(task)
 
+    normalize_orders(tasks)
+
 def save_tasks(tasks):
     task_data = []
 
@@ -112,6 +114,7 @@ def load_tasks():
 
 tasks = load_tasks()
 active_editor = None
+blank_rows = []
 
 def get_hierarchy(tasks):
     ordered_tasks = []
@@ -134,6 +137,19 @@ def get_hierarchy(tasks):
     add_children(None)
 
     return ordered_tasks
+
+def get_display_rows(tasks, blank_rows):
+    rows = []
+
+    ordered_tasks = get_hierarchy(tasks)
+
+    for task in ordered_tasks:
+        rows.append({
+            "type": "task",
+            "id": task.id
+        })
+
+    return rows
 
 def normalize_orders(tasks):
     parents = set(
@@ -407,25 +423,53 @@ def refresh_table():
     for item in table.get_children():
         table.delete(item)
 
-    ordered_tasks = get_hierarchy(tasks)
+    def render_tasks(parent_id=None, tree_parent=""):
+        children = [
+            task
+            for task in tasks
+            if task.parent_id == parent_id
+        ]
 
-    for task in ordered_tasks:
-        parent = task.parent_id if task.parent_id else ""
-
-        table.insert(
-            parent,
-            "end",
-            iid=task.id,
-            text=task.name,
-            values=(
-                task.start_date,
-                task.end_date,
-                task.duration,
-                task.status
-            ),
-            open=open_states.get(task.id, True),
-            tags=("row_even" if len(table.get_children(parent)) % 2 ==0 else "row_odd",)
+        children.sort(
+            key=lambda task: task.order
         )
+
+        for task in children:
+            table.insert(
+                tree_parent,
+                "end",
+                iid=task.id,
+                text=task.name,
+                values=(
+                    task.start_date,
+                    task.end_date,
+                    task.duration,
+                    task.status
+                ),
+                open=open_states.get(task.id, True),
+                tags=(
+                    "row_even"
+                    if len(table.get_children(tree_parent)) % 2 == 0
+                    else "row_odd"
+                )
+            )
+
+            for blank_row in get_blank_rows_after(task.id):
+                table.insert(
+                    tree_parent,
+                    "end",
+                    iid=blank_row["id"],
+                    text="",
+                    values=("", "", "", ""),
+                    tags=("blank_row",)
+                )
+
+            render_tasks(
+                task.id,
+                task.id
+            )
+
+    render_tasks()
 
     table.insert(
         "",
@@ -516,6 +560,36 @@ def edit_task_name(event):
         lambda event: cancel_editor()
     )
 
+def create_blank_row(after_id):
+    blank_row = {
+        "id": str(uuid.uuid4()),
+        "after_id": after_id
+    }
+
+    blank_rows.append(blank_row)
+
+def get_blank_rows_after(row_id):
+    return [
+        blank_row
+        for blank_row in blank_rows
+        if blank_row["after_id"] == row_id
+    ]
+
+def add_blank_row_below():
+    selected_item = table.selection()
+
+    if not selected_item:
+        return
+
+    selected_id = selected_item[0]
+
+    create_blank_row(selected_id)
+
+    refresh_table()
+
+    table.selection_set(selected_id)
+    table.focus(selected_id)
+
 def edit_new_task_name(event):
     global active_editor
 
@@ -552,9 +626,31 @@ def edit_new_task_name(event):
             active_editor = None
             return True
 
-        # Task creation will go here later
+        new_order = len([
+            task
+            for task in tasks
+            if task.parent_id is None
+        ])
 
-        return False
+        new_task = Task(
+            new_name,
+            date.today(),
+            date.today(),
+            "Not Started",
+            parent_id=None,
+            order=new_order
+        )
+
+        tasks.append(new_task)
+
+        save_tasks(tasks)
+
+        active_editor = None
+
+        editor.destroy()
+        refresh_table()
+
+        return True
 
     active_editor = {
         "editor": editor,
@@ -987,7 +1083,7 @@ def update_selected_task():
         name_entry.pack(pady=5)
         name_entry.insert(
             0,
-            item["text"][0]
+            item["text"]
         )
 
         start_label = tk.Label(
@@ -1297,6 +1393,10 @@ table.tag_configure(
     foreground="gray"
 )
 
+table.tag_configure(
+    "blank_row",
+    background="#ffffff"
+)
 
 ribbon = tk.Frame(window)
 
@@ -1412,6 +1512,17 @@ move_down_button = tk.Button(
 
 move_down_button.pack(
     side="left"
+)
+
+add_row_below_button = tk.Button(
+    hierarchy_group,
+    text="Add Row Below",
+    command=add_blank_row_below
+)
+
+add_row_below_button.pack(
+    side="left",
+    padx=2
 )
 
 table.pack(fill="both", expand=True)
