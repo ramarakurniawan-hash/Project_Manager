@@ -28,8 +28,8 @@
     },
     {
         "id": "be9236d1-cc73-47a7-9533-c365829e49d9",
-        "name": "child 4",
-        "start_date": "2026-01-01",
+        "name": "child 45",
+        "start_date": "2026-05-06",
         "end_date": "2026-11-08",
         "status": "In Progress",
         "parent_id": "9aacd742-6211-4f44-aa71-a39b181b1f60",
@@ -97,5 +97,14 @@
         "status": "Not Started",
         "parent_id": "8b40a558-729e-4163-b114-1b64a3017e11",
         "order": 1
+    },
+    {
+        "id": "204be898-bb8b-49c2-8cd7-fb254c2cb5df",
+        "name": "test_creation 3",
+        "start_date": "2026-09-21",
+        "end_date": "2026-09-21",
+        "status": "Not Started",
+        "parent_id": null,
+        "order": 2
     }
 ]
