@@ -1,319 +1,50 @@
-import uuid
-from datetime import date, timedelta
+from datetime import date
+
 import tkinter as tk
 from tkinter import ttk, messagebox
 from tkcalendar import DateEntry
-import json
 
-class Task:
-    def __init__(
-        self,
-        name,
-        start_date,
-        end_date,
-        status,
-        parent_id=None,
-        order=0
-    ):
-        self.id = str(uuid.uuid4())
-        self.name = name
-        self.start_date = start_date
-        self.end_date = end_date
-        self.status = status
-        self.parent_id = parent_id
-        self.order = order
+from models.user import User
+from models.project import Project
+from models.row import Row
+from models.task import Task
 
-    @property
-    def duration(self):
-        return (self.end_date - self.start_date).days + 1
+from repositories.project_repository import save_project, load_project
+from repositories.task_repository import save_tasks, load_tasks
 
-def find_task(tasks, task_id):
-    for task in tasks:
-        if task.id == task_id:
-            return task
+from services.task_service import (
+    find_task,
+    validate_dates,
+    calculate_end_date,
+    update_task,
+    delete_task
+)
 
-    return None
-
-def validate_dates(start_date, end_date):
-    if start_date > end_date:
-        return False
-    
-    return True
-
-def calculate_end_date(start_date, duration):
-    return start_date + timedelta(days=duration - 1)
-
-def update_task(tasks, task_id, new_name, new_start, new_end, new_status):
-    task = find_task(tasks, task_id)
-
-    if task is None:
-        return False
-
-    if not validate_dates(new_start, new_end):
-        messagebox.showerror(
-            "Invalid Date Range",
-            "End date cannot be earlier than start date."
-        )
-        return False
-        
-    task.name = new_name
-    task.start_date = new_start
-    task.end_date = new_end
-    task.status = new_status
-
-    return True
-
-def delete_task(tasks, task_id):
-    task = find_task(tasks, task_id)
-
-    if task is None:
-        return
-
-    tasks.remove(task)
-
-    normalize_orders(tasks)
-
-def save_tasks(tasks):
-    task_data = []
-
-    for task in tasks:
-        task_data.append({
-            "id": task.id,
-            "name": task.name,
-            "start_date": task.start_date.isoformat(),
-            "end_date": task.end_date.isoformat(),
-            "status": task.status,
-            "parent_id": task.parent_id,
-            "order": task.order
-        })
-
-    with open("tasks.json", "w") as file:
-        json.dump(task_data, file, indent=4)
-
-def load_tasks():
-    with open("tasks.json", "r") as file:
-        task_data = json.load(file)
-
-    tasks = []
-
-    for task in task_data:
-        new_task = Task(
-            task["name"],
-            date.fromisoformat(task["start_date"]),
-            date.fromisoformat(task["end_date"]),
-            task["status"],
-            parent_id=task.get("parent_id"),
-            order=task.get("order", 0)
-        )
-
-        new_task.id = task["id"]
-
-        tasks.append(new_task)
-
-    return tasks
+from services.hierarchy_service import (
+    indent_task,
+    outdent_task,
+    move_task_up,
+    move_task_down
+)
 
 tasks = load_tasks()
 active_editor = None
-blank_rows = []
 
-def get_hierarchy(tasks):
-    ordered_tasks = []
+user = User("test-user")
+project = Project("My Project", user.id)
 
-    def add_children(parent_id):
-        children =[
-            task
-            for task in tasks
-            if task.parent_id == parent_id
-        ]
+for task in tasks:
+    project.rows.append(Row(task))
 
-        children.sort(
-            key=lambda task: task.order
-        )
+save_project(project)
 
-        for task in children:
-            ordered_tasks.append(task)
-            add_children(task.id)
+print("Tasks:", len(tasks))
+print("Rows:", len(project.rows))
+print("First row:", project.rows[0].content.name)
 
-    add_children(None)
 
-    return ordered_tasks
 
-def get_display_rows(tasks, blank_rows):
-    rows = []
 
-    ordered_tasks = get_hierarchy(tasks)
-
-    for task in ordered_tasks:
-        rows.append({
-            "type": "task",
-            "id": task.id
-        })
-
-    return rows
-
-def normalize_orders(tasks):
-    parents = set(
-        task.parent_id
-        for task in tasks
-    )
-
-    for parent_id in parents:
-        siblings = [
-            task
-            for task in tasks
-            if task.parent_id == parent_id
-        ]
-
-        siblings.sort(
-            key=lambda task: task.order
-        )
-
-        for index, task in enumerate(siblings):
-            task.order = index
-
-def indent_task(tasks, task_id):
-    task = find_task(tasks, task_id)
-
-    if task is None:
-        return False
-    
-    current_parent_id = task.parent_id
-
-    siblings = [
-        sibling
-        for sibling in tasks
-        if sibling.parent_id == current_parent_id
-    ]
-
-    siblings.sort(
-        key=lambda sibling: sibling.order
-    )
-
-    task_index = siblings.index(task)
-
-    if task_index == 0:
-        return False
-
-    previous_sibling = siblings[task_index - 1]
-
-    task.parent_id = previous_sibling.id
-
-    new_siblings =[
-        sibling
-        for sibling in tasks
-        if sibling.parent_id == previous_sibling.id
-        and sibling.id != task.id
-    ]
-
-    task.order = len(new_siblings)
-
-    normalize_orders(tasks)
-
-    return True
-
-def outdent_task(tasks, task_id):
-    task = find_task(tasks, task_id)
-
-    if task is None:
-        return False
-
-    if task.parent_id is None:
-        return False
-
-    parent = find_task(
-        tasks,
-        task.parent_id
-    )
-
-    if parent is None:
-        return False
-
-    new_parent_id = parent.parent_id
-
-    siblings = [
-        sibling
-        for sibling in tasks
-        if sibling.parent_id == new_parent_id
-        and sibling.id != task.id
-    ]
-
-    siblings.sort(
-        key=lambda sibling: sibling.order
-    )
-
-    parent_index = siblings.index(parent)
-
-    task.parent_id = new_parent_id
-
-    siblings.insert(
-        parent_index + 1,
-        task
-    )
-
-    for index, sibling in enumerate(siblings):
-        sibling.order = index
-
-    return True
-
-def move_task_up(tasks, task_id):
-    task = find_task(tasks, task_id)
-
-    if task is None:
-        return False
-
-    siblings = [
-        sibling
-        for sibling in tasks
-        if sibling.parent_id == task.parent_id
-    ]
-
-    siblings.sort(
-        key=lambda sibling: sibling.order
-    )
-
-    task_index = siblings.index(task)
-
-    if task_index == 0:
-        return False
-
-    previous_sibling = siblings[task_index - 1]
-
-    task.order, previous_sibling.order = (
-        previous_sibling.order,
-        task.order
-    )
-
-    return True
-
-def move_task_down(tasks, task_id):
-    task = find_task(tasks, task_id)
-
-    if task is None:
-        return False
-
-    siblings = [
-        sibling
-        for sibling in tasks
-        if sibling.parent_id == task.parent_id
-    ]
-
-    siblings.sort(
-        key=lambda sibling: sibling.order    
-    )
-
-    task_index = siblings.index(task)
-
-    if task_index == len(siblings) -1:
-        return False
-
-    next_sibling = siblings[task_index + 1]
-
-    task.order, next_sibling.order = (
-        next_sibling.order,
-        task.order
-    )
-
-    return True
 
 def indent_selected_task():
     selected_item = table.selection()
@@ -454,16 +185,6 @@ def refresh_table():
                 )
             )
 
-            for blank_row in get_blank_rows_after(task.id):
-                table.insert(
-                    tree_parent,
-                    "end",
-                    iid=blank_row["id"],
-                    text="",
-                    values=("", "", "", ""),
-                    tags=("blank_row",)
-                )
-
             render_tasks(
                 task.id,
                 task.id
@@ -559,36 +280,6 @@ def edit_task_name(event):
         "<Escape>",
         lambda event: cancel_editor()
     )
-
-def create_blank_row(after_id):
-    blank_row = {
-        "id": str(uuid.uuid4()),
-        "after_id": after_id
-    }
-
-    blank_rows.append(blank_row)
-
-def get_blank_rows_after(row_id):
-    return [
-        blank_row
-        for blank_row in blank_rows
-        if blank_row["after_id"] == row_id
-    ]
-
-def add_blank_row_below():
-    selected_item = table.selection()
-
-    if not selected_item:
-        return
-
-    selected_id = selected_item[0]
-
-    create_blank_row(selected_id)
-
-    refresh_table()
-
-    table.selection_set(selected_id)
-    table.focus(selected_id)
 
 def edit_new_task_name(event):
     global active_editor
@@ -1154,6 +845,10 @@ def update_selected_task():
             )
 
             if not updated:
+                messagebox.showerror(
+               "Invalid Date Range",
+                "End date cannot be earlier than start date."
+                )
                 return
 
             save_tasks(tasks)
@@ -1393,11 +1088,6 @@ table.tag_configure(
     foreground="gray"
 )
 
-table.tag_configure(
-    "blank_row",
-    background="#ffffff"
-)
-
 ribbon = tk.Frame(window)
 
 ribbon.pack(
@@ -1512,17 +1202,6 @@ move_down_button = tk.Button(
 
 move_down_button.pack(
     side="left"
-)
-
-add_row_below_button = tk.Button(
-    hierarchy_group,
-    text="Add Row Below",
-    command=add_blank_row_below
-)
-
-add_row_below_button.pack(
-    side="left",
-    padx=2
 )
 
 table.pack(fill="both", expand=True)
