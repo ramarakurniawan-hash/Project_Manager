@@ -27,6 +27,8 @@ from services.hierarchy_service import (
     move_task_down
 )
 
+from services.project_service import get_tasks, get_ordered_rows
+
 tasks = load_tasks()
 active_editor = None
 
@@ -42,6 +44,17 @@ print("Tasks:", len(tasks))
 print("Rows:", len(project.rows))
 print("First row:", project.rows[0].content.name)
 
+tasks = get_tasks(project)
+
+print("Tasks:", len(tasks))
+print("Rows:", len(project.rows))
+print("First task:", tasks[0].name)
+
+rows = get_ordered_rows(project)
+
+print("Rows:", len(rows))
+print("First row:", rows[0].content.name)
+print("First row blank:", rows[0].is_blank)
 
 
 
@@ -138,6 +151,24 @@ def handle_click_away(event):
     if active_editor is not None:
         close_editor()
 
+
+def refresh_row_numbers():
+    for widget in row_number_frame.winfo_children():
+        if widget != row_number_header:
+            widget.destroy()
+
+    for index, row in enumerate(project.rows, start=1):
+        label = tk.Label(
+            row_number_frame,
+            text=str(index),
+            font=("Segoe UI", 10),
+            width=5
+        )
+
+        label.pack(
+            fill="x"
+        )
+
 def refresh_table():
     selected_item = table.selection()
     selected_id = selected_item[0] if selected_item else None
@@ -155,17 +186,15 @@ def refresh_table():
         table.delete(item)
 
     def render_tasks(parent_id=None, tree_parent=""):
-        children = [
-            task
-            for task in tasks
-            if task.parent_id == parent_id
-        ]
+        for row in project.rows:
+            if row.is_blank:
+                continue
 
-        children.sort(
-            key=lambda task: task.order
-        )
+            task = row.content
 
-        for task in children:
+            if task.parent_id != parent_id:
+                continue
+
             table.insert(
                 tree_parent,
                 "end",
@@ -204,6 +233,8 @@ def refresh_table():
     if selected_id and table.exists(selected_id):
         table.selection_set(selected_id)
         table.focus(selected_id)
+
+    refresh_row_numbers()
 
 def edit_task_name(event):
     global active_editor
@@ -1021,11 +1052,31 @@ style.configure(
     font=("Segoe UI", 10)
 )
 
+table_area = tk.Frame(window)
+
 table = ttk.Treeview(
-    window,
+    table_area,
     columns=("Start", "End", "Duration", "Status"),
     show="tree headings",
     style="Grid.Treeview"
+)
+
+row_number_frame = tk.Frame(
+    table_area,
+    width=50
+    )
+
+row_number_frame.pack_propagate(False)
+
+row_number_header = tk.Label(
+    row_number_frame,
+    text="#",
+    font=("Segoe UI", 10, "bold"),
+    width=5
+)
+
+row_number_header.pack(
+    fill="x"
 )
 
 table.heading("#0", text="Task")
@@ -1204,7 +1255,21 @@ move_down_button.pack(
     side="left"
 )
 
-table.pack(fill="both", expand=True)
+row_number_frame.pack(
+    side="left",
+    fill="y"
+)
+
+table.pack(
+    side="left",
+    fill="both",
+    expand=True
+)
+
+table_area.pack(
+    fill="both",
+    expand=True
+)
 
 table.bind("<Double-1>", edit_cell)
 table.bind("<Button-1>", handle_click_away)
