@@ -1,7 +1,7 @@
 {
-    "id": "0de8f19c-7baf-4b33-b61b-7f8090db9891",
+    "id": "09a772ab-a6a1-4e7e-b39b-1fd0459e43c2",
     "name": "My Project",
-    "owner_id": "cdc12ecf-2214-4c9d-a0f7-267623287ca3",
+    "owner_id": "b3348f7d-5d7d-4f0a-9e3f-e87e696ff79c",
     "rows": [
         {
             "type": "task",
@@ -36,9 +36,9 @@
         {
             "type": "task",
             "id": "be9236d1-cc73-47a7-9533-c365829e49d9",
-            "name": "child 45",
-            "start_date": "2026-07-15",
-            "end_date": "2026-11-08",
+            "name": "child 434",
+            "start_date": "2026-07-14",
+            "end_date": "2026-11-10",
             "status": "In Progress",
             "parent_id": "9aacd742-6211-4f44-aa71-a39b181b1f60",
             "order": 2
@@ -49,9 +49,9 @@
             "name": "child 3",
             "start_date": "2026-11-26",
             "end_date": "2026-12-01",
-            "status": "In Progress",
+            "status": "Not Started",
             "parent_id": "9aacd742-6211-4f44-aa71-a39b181b1f60",
-            "order": 1
+            "order": 0
         },
         {
             "type": "task",
@@ -59,9 +59,9 @@
             "name": "child 2",
             "start_date": "2026-11-04",
             "end_date": "2026-12-01",
-            "status": "Not Started",
+            "status": "Done",
             "parent_id": "9aacd742-6211-4f44-aa71-a39b181b1f60",
-            "order": 0
+            "order": 1
         },
         {
             "type": "task",
@@ -91,7 +91,7 @@
             "end_date": "2026-09-16",
             "status": "Done",
             "parent_id": "31588176-ac2a-446c-9134-181ac011c993",
-            "order": 1
+            "order": 2
         },
         {
             "type": "task",
@@ -100,8 +100,8 @@
             "start_date": "2026-09-17",
             "end_date": "2026-09-30",
             "status": "Not Started",
-            "parent_id": "4dcd22bf-2edb-49cf-a44f-39ffabf40db3",
-            "order": 0
+            "parent_id": "31588176-ac2a-446c-9134-181ac011c993",
+            "order": 1
         },
         {
             "type": "task",
@@ -115,13 +115,13 @@
         },
         {
             "type": "task",
-            "id": "204be898-bb8b-49c2-8cd7-fb254c2cb5df",
-            "name": "test_creation 3",
-            "start_date": "2026-09-21",
-            "end_date": "2026-09-21",
+            "id": "350ff74b-f226-43cb-be89-aed5fedbd88c",
+            "name": "new row",
+            "start_date": "2026-09-02",
+            "end_date": "2026-10-01",
             "status": "Not Started",
             "parent_id": null,
-            "order": 2
+            "order": 0
         }
     ]
 }
