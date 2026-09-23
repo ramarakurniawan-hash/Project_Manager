@@ -4,20 +4,15 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from tkcalendar import DateEntry
 
-from models.user import User
-from models.project import Project
 from models.row import Row
 from models.task import Task
 
 from repositories.project_repository import save_project, load_project
-from repositories.task_repository import save_tasks, load_tasks
 
 from services.task_service import (
-    find_task,
     validate_dates,
     calculate_end_date,
-    update_task,
-    delete_task
+    rename_task
 )
 
 from services.hierarchy_service import (
@@ -27,37 +22,14 @@ from services.hierarchy_service import (
     move_task_down
 )
 
-from services.project_service import get_tasks, get_ordered_rows
+from services.project_service import (
+    find_row,
+    delete_row
+)
 
-tasks = load_tasks()
 active_editor = None
 
-user = User("test-user")
-project = Project("My Project", user.id)
-
-for task in tasks:
-    project.rows.append(Row(task))
-
-save_project(project)
-
-print("Tasks:", len(tasks))
-print("Rows:", len(project.rows))
-print("First row:", project.rows[0].content.name)
-
-tasks = get_tasks(project)
-
-print("Tasks:", len(tasks))
-print("Rows:", len(project.rows))
-print("First task:", tasks[0].name)
-
-rows = get_ordered_rows(project)
-
-print("Rows:", len(rows))
-print("First row:", rows[0].content.name)
-print("First row blank:", rows[0].is_blank)
-
-
-
+project = load_project()
 
 def indent_selected_task():
     selected_item = table.selection()
@@ -282,11 +254,14 @@ def edit_task_name(event):
 
         task_id = row_id
 
-        task = find_task(tasks, task_id)
+        renamed = rename_task(
+            project,
+            task_id,
+            new_name
+        )
 
-        if task:
-            task.name = new_name
-            save_tasks(tasks)
+        if renamed:
+            save_project(project)
 
             active_editor = None
 
@@ -348,24 +323,19 @@ def edit_new_task_name(event):
             active_editor = None
             return True
 
-        new_order = len([
-            task
-            for task in tasks
-            if task.parent_id is None
-        ])
-
         new_task = Task(
             new_name,
             date.today(),
             date.today(),
             "Not Started",
-            parent_id=None,
-            order=new_order
+            parent_id=None
         )
 
-        tasks.append(new_task)
+        project.rows.append(
+            Row(new_task)
+        )
 
-        save_tasks(tasks)
+        save_project(project)
 
         active_editor = None
 
@@ -437,11 +407,15 @@ def edit_task_start_date(event):
 
         task_id = row_id
 
-        task = find_task(tasks, task_id)
+        row = find_row(
+            project,
+            task_id
+        )
 
-        if not task:
+        if row is None:
             return False
 
+        task = row.content
 
         if not validate_dates(new_start, task.end_date):
             messagebox.showerror(
@@ -456,7 +430,7 @@ def edit_task_start_date(event):
             return False
 
         task.start_date = new_start
-        save_tasks(tasks)
+        save_project(project)
 
         active_editor = None
 
@@ -529,10 +503,16 @@ def edit_task_end_date(event):
         new_end = editor.get_date()
 
         task_id = row_id
-        task = find_task(tasks, task_id)
 
-        if not task:
+        row = find_row(
+            project,
+            task_id
+        )
+
+        if row is None:
             return False
+
+        task = row.content
 
         if not validate_dates(task.start_date, new_end):
             messagebox.showerror(
@@ -547,7 +527,7 @@ def edit_task_end_date(event):
             return False
 
         task.end_date = new_end
-        save_tasks(tasks)
+        save_project(project)
 
         active_editor = None
 
@@ -568,7 +548,10 @@ def edit_task_end_date(event):
 
     editor.bind(
         "<<DateEntrySelected>>",
-        finish_edit
+        lambda event: editor.after(
+            10,
+            finish_edit
+        )
     )
 
     editor.bind(
@@ -640,10 +623,16 @@ def edit_task_duration(event):
             return False
 
         task_id = row_id
-        task = find_task(tasks, task_id)
 
-        if not task:
+        row = find_row(
+            project,
+            task_id
+        )
+
+        if row is None:
             return False
+
+        task = row.content
 
         new_end = calculate_end_date(
             task.start_date,
@@ -652,7 +641,7 @@ def edit_task_duration(event):
 
         task.end_date = new_end
 
-        save_tasks(tasks)
+        save_project(project)
 
         active_editor = None
 
@@ -717,20 +706,26 @@ def edit_task_status(event):
 
         task_id = row_id
 
-        task = find_task(tasks, task_id)
+        row = find_row(
+            project,
+            task_id
+        )
 
-        if task:
-            task.status = new_status
-            save_tasks(tasks)
+        if row is None:
+            return False
 
-            active_editor = None
+        task = row.content
 
-            editor.destroy()
-            refresh_table()
+        task.status = new_status
 
-            return True
+        save_project(project)
 
-        return False
+        active_editor = None
+
+        editor.destroy()
+        refresh_table()
+
+        return True
 
     active_editor = {
         "editor": editor,
@@ -866,23 +861,32 @@ def update_selected_task():
 
             new_status = status_dropdown.get()
 
-            updated = update_task(
-                tasks,
-                task_id,
-                new_name,
+            if not validate_dates(
                 new_start,
-                new_end,
-                new_status
-            )
-
-            if not updated:
+                new_end
+            ):
                 messagebox.showerror(
-               "Invalid Date Range",
-                "End date cannot be earlier than start date."
+                    "Invalid Date Range",
+                    "End date cannot be earlier than start date."
                 )
                 return
 
-            save_tasks(tasks)
+            row = find_row(
+                project,
+                task_id
+            )
+
+            if row is None:
+                return
+
+            task = row.content
+
+            task.name = new_name
+            task.start_date = new_start
+            task.end_date = new_end
+            task.status = new_status
+
+            save_project(project)
 
             refresh_table()
             edit_window.destroy()
@@ -909,9 +913,14 @@ def delete_selected_task():
         )
 
         if confirm:
-            delete_task(tasks, task_id)
-            save_tasks(tasks)
-            refresh_table()
+            deleted = delete_row(
+                project,
+                task_id
+            )
+
+            if deleted:
+                save_project(project)
+                refresh_table()
 
 def add_task_window():
     task_window = tk.Toplevel(window)
@@ -1000,9 +1009,11 @@ def add_task_window():
             new_task_status
         )
 
-        tasks.append(new_task)
+        project.rows.append(
+            Row(new_task)
+        )
 
-        save_tasks(tasks)
+        save_project(project)
 
         refresh_table()
         task_window.destroy()
@@ -1177,7 +1188,7 @@ hierarchy_group.pack(
 save_button = tk.Button(
     file_group,
     text="Save",
-    command=lambda: save_tasks(tasks)
+    command=lambda: save_project(project)
 )
 
 save_button.pack(
